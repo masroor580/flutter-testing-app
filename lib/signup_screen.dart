@@ -9,6 +9,7 @@ class SignUpScreen extends StatefulWidget {
   @override
   _SignUpScreenState createState() => _SignUpScreenState();
 }
+
 //hujh
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -55,7 +56,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const Text(
                       "Create Account",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
                     const Text(
@@ -64,32 +66,40 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
-                    _buildTextField("Full Name", _fullNameController, false, validator: _validateFullName),
+                    _buildTextField("Full Name", _fullNameController, false,
+                        validator: _validateFullName),
                     const SizedBox(height: 10),
-                    _buildTextField("Email", _emailController, false, validator: _validateEmail),
+                    _buildTextField("Email", _emailController, false,
+                        validator: _validateEmail),
                     const SizedBox(height: 10),
-                    _buildTextField("Phone", _phoneController, false, validator: _validatePhone),
+                    _buildTextField("Phone", _phoneController, false,
+                        validator: _validatePhone),
                     const SizedBox(height: 10),
-                    _buildTextField("Password", _passwordController, true, isConfirm: false, validator: _validatePassword),
+                    _buildTextField("Password", _passwordController, true,
+                        isConfirm: false, validator: _validatePassword),
                     const SizedBox(height: 10),
-                    _buildTextField("Confirm Password", _confirmPasswordController, true, isConfirm: true, validator: _validateConfirmPassword),
+                    _buildTextField(
+                        "Confirm Password", _confirmPasswordController, true,
+                        isConfirm: true, validator: _validateConfirmPassword),
                     const SizedBox(height: 20),
                     authProvider.isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton(
-                      onPressed: _handleSignUp,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        "Sign Up",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ),
+                            onPressed: _handleSignUp,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 40, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              "Sign Up",
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.white),
+                            ),
+                          ),
                     const SizedBox(height: 15),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -99,10 +109,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           onPressed: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => LoginScreen()),
+                              MaterialPageRoute(
+                                  builder: (context) => LoginScreen()),
                             );
                           },
-                          child: const Text("Login", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                          child: const Text("Login",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue)),
                         ),
                       ],
                     ),
@@ -116,26 +130,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, bool isPassword, {bool isConfirm = false, String? Function(String?)? validator}) {
+  Widget _buildTextField(
+      String label, TextEditingController controller, bool isPassword,
+      {bool isConfirm = false, String? Function(String?)? validator}) {
     return TextFormField(
       controller: controller,
-      obscureText: isPassword ? (isConfirm ? _obscureConfirmPassword : _obscurePassword) : false,
+      obscureText: isPassword
+          ? (isConfirm ? _obscureConfirmPassword : _obscurePassword)
+          : false,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(isConfirm ? (_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off) : (_obscurePassword ? Icons.visibility : Icons.visibility_off)),
-          onPressed: () {
-            setState(() {
-              if (isConfirm) {
-                _obscureConfirmPassword = !_obscureConfirmPassword;
-              } else {
-                _obscurePassword = !_obscurePassword;
-              }
-            });
-          },
-        )
+                icon: Icon(isConfirm
+                    ? (_obscureConfirmPassword
+                        ? Icons.visibility
+                        : Icons.visibility_off)
+                    : (_obscurePassword
+                        ? Icons.visibility
+                        : Icons.visibility_off)),
+                onPressed: () {
+                  setState(() {
+                    if (isConfirm) {
+                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                    } else {
+                      _obscurePassword = !_obscurePassword;
+                    }
+                  });
+                },
+              )
             : null,
       ),
       validator: validator,
@@ -162,7 +186,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   /// ✅ Phone Number Validation
   String? _validatePhone(String? value) {
-    if (value == null || value.trim().isEmpty) return "Phone number is required";
+    if (value == null || value.trim().isEmpty)
+      return "Phone number is required";
     if (!RegExp(r'^[0-9]{4,11}$').hasMatch(value)) {
       return "Phone number must be 4-11 digits";
     }
@@ -181,7 +206,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   /// ✅ Confirm Password Validation
   String? _validateConfirmPassword(String? value) {
-    if (value == null || value.trim().isEmpty) return "Confirm Password is required";
+    if (value == null || value.trim().isEmpty)
+      return "Confirm Password is required";
     if (value != _passwordController.text) {
       return "Password do not match";
     }
@@ -238,12 +264,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       Navigator.pop(context); // Close dialog
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const LoginScreen()),
                       );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 30),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 30),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -272,3 +300,5 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 }
+
+//hello
