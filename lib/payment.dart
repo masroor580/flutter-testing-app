@@ -24,9 +24,8 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   final List<TextEditingController> _controllers =
-  List.generate(6, (index) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-  List.generate(6, (index) => FocusNode());
+      List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
 
   @override
   void dispose() {
@@ -52,12 +51,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (_controllers[index].text.isEmpty && index > 0) {
         FocusScope.of(ctx).requestFocus(_focusNodes[index - 1]);
         _controllers[index - 1].clear();
-        Provider.of<OTPProvider>(ctx, listen: false)
-            .updateOTP(index - 1, "");
+        Provider.of<OTPProvider>(ctx, listen: false).updateOTP(index - 1, "");
       } else {
         _controllers[index].clear();
-        Provider.of<OTPProvider>(ctx, listen: false)
-            .updateOTP(index, "");
+        Provider.of<OTPProvider>(ctx, listen: false).updateOTP(index, "");
       }
     }
   }
@@ -71,11 +68,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         builder: (ctx) {
           // Now this context is below the provider.
           return Scaffold(
-            appBar: AppBar(
-              title: const Text("Payment"),
-              backgroundColor: Colors.blueAccent,
-              centerTitle: true,
-            ),
+            // appBar: AppBar(
+            //   title: const Text("Payment"),
+            //   backgroundColor: Colors.blueAccent,
+            //   centerTitle: true,
             body: LayoutBuilder(
               builder: (ctx, constraints) {
                 bool isDesktop = constraints.maxWidth > 800;
@@ -103,10 +99,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Payment",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
+                  // const Text(
+                  //   "Payment",
+                  //   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  // ),
                   const SizedBox(height: 20),
                   _otpWidget(context),
                   const SizedBox(height: 20),
@@ -141,7 +137,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Builder(
       builder: (ctx) {
         return Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 4,
           shadowColor: Colors.grey.withOpacity(0.3),
           child: Padding(
@@ -240,8 +237,7 @@ class PaymentHistoryTable extends StatelessWidget {
     return TableRow(
       children: cells.map((cell) {
         return Padding(
-          padding:
-          const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
           child: Text(
             cell,
             textAlign: TextAlign.center,
@@ -294,15 +290,34 @@ class PaymentHistoryTable extends StatelessWidget {
                             : const FlexColumnWidth(1.5),
                       },
                       children: [
-                        _buildTableRow(
-                            ["ID", "Status", "Payment Method", "Date", "Amount"],
-                            isHeader: true),
-                        _buildTableRow(
-                            ["001", "Success", "Credit Card", "20 Feb 2024", "\$50.00"]),
-                        _buildTableRow(
-                            ["002", "Pending", "Transfer", "20 Feb 2024", "\$150.00"]),
-                        _buildTableRow(
-                            ["003", "Failed", "Bank Transfer", "21 Feb 2024", "\$75.00"]),
+                        _buildTableRow([
+                          "ID",
+                          "Status",
+                          "Payment Method",
+                          "Date",
+                          "Amount"
+                        ], isHeader: true),
+                        _buildTableRow([
+                          "001",
+                          "Success",
+                          "Credit Card",
+                          "20 Feb 2024",
+                          "\$50.00"
+                        ]),
+                        _buildTableRow([
+                          "002",
+                          "Pending",
+                          "Transfer",
+                          "20 Feb 2024",
+                          "\$150.00"
+                        ]),
+                        _buildTableRow([
+                          "003",
+                          "Failed",
+                          "Bank Transfer",
+                          "21 Feb 2024",
+                          "\$75.00"
+                        ]),
                       ],
                     ),
                   ),
@@ -327,6 +342,7 @@ const List<Map<String, String>> earningsData = [
 // Extract EarningsCards as a separate widget to avoid unnecessary rebuilds.
 class EarningsCards extends StatelessWidget {
   final bool isMobile;
+
   const EarningsCards({Key? key, required this.isMobile}) : super(key: key);
 
   @override
@@ -348,11 +364,12 @@ class EarningsCard extends StatelessWidget {
   final bool isMobile;
   final String title;
   final String amount;
+
   const EarningsCard(
       {Key? key,
-        required this.isMobile,
-        required this.title,
-        required this.amount})
+      required this.isMobile,
+      required this.title,
+      required this.amount})
       : super(key: key);
 
   @override
@@ -383,8 +400,7 @@ class EarningsCard extends StatelessWidget {
                   Icon(Icons.trending_up, color: Colors.green),
                   SizedBox(width: 4),
                   Text("Income",
-                      style:
-                      TextStyle(color: Colors.green, fontSize: 14)),
+                      style: TextStyle(color: Colors.green, fontSize: 14)),
                 ],
               ),
             ],
