@@ -190,7 +190,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:new_app/orders_page.dart';
-import 'package:new_app/permission_screen.dart';
+import 'package:new_app/services/permission_screen.dart';
 import 'package:new_app/profile_screen.dart';
 import 'payment.dart';
 
