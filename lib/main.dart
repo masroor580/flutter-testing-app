@@ -65,7 +65,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/signup': (context) => const SignUpScreen(),
         '/login': (context) => const LoginScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => const MainHome(),
         '/orders': (context) => const OrdersPage(),
       },
     );
@@ -113,6 +113,6 @@ class AuthWrapper extends StatelessWidget {
       );
     }
 
-    return authProvider.currentUser != null ? const HomeScreen() : const LoginScreen();
+    return authProvider.currentUser != null ? const MainHome() : const LoginScreen();
   }
 }
