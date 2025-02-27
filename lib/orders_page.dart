@@ -11,69 +11,68 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
-
   @override
   void initState() {
     Future.microtask(() =>
-        Provider.of<CategoryController>(context, listen: false).fetchCategories());
+        Provider.of<CategoryController>(context, listen: false)
+            .fetchCategories());
 
     super.initState();
   }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Orders'),
-      ),
-      body: Consumer<CategoryController>(
-        builder: (context, controller, child) {
-          if (controller.isLoading) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (controller.errorMessage != null) {
-            return Center(child: Text(controller.errorMessage!));
-          }
-          if (controller.categories == null || controller.categories!.isEmpty) {
-            return Center(child: Text("No categories available"));
-          }
-          return ListView.builder(
-            itemCount: controller.categories!.length,
-            itemBuilder: (context, index) {
-              final category = controller.categories![index];
-              return
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row (
-                    spacing: 10,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: Container(
+    return Scaffold(body: Consumer<CategoryController>(
+      builder: (context, controller, child) {
+        if (controller.isLoading) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (controller.errorMessage != null) {
+          return Center(child: Text(controller.errorMessage!));
+        }
+        if (controller.categories == null || controller.categories!.isEmpty) {
+          return Center(child: Text("No categories available"));
+        }
+        return ListView.builder(
+          itemCount: controller.categories!.length,
+          itemBuilder: (context, index) {
+            final category = controller.categories![index];
+            return Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                spacing: 10,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                      child: Container(
                           decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: Colors.black
-                              )
-                          ),
-                          child: CachedNetworkImage(imageUrl: category.strCategoryThumb ?? ''))),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          spacing: 5,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(category.strCategory ?? '',),
-                            Text(category.strCategoryDescription ?? '',
-                              maxLines: 2, overflow: TextOverflow.ellipsis,),
-                          ],
+                              border: Border.all(color: Colors.black)),
+                          child: CachedNetworkImage(
+                              imageUrl: category.strCategoryThumb ?? ''))),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      spacing: 5,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          category.strCategory ?? '',
                         ),
-                      )
-                    ],
-                  ),
-                );
-            },
-          );
-        },
-      ),
-    );
+                        Text(
+                          category.strCategoryDescription ?? '',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ));
   }
 }
