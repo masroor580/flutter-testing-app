@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import 'package:new_app/dio_service.dart';
+import 'package:new_app/services/dio_service.dart';
 import 'package:new_app/models/food_api_categories_data_model.dart';
 
 class CategoryRepository {
