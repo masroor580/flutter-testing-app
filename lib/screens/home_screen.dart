@@ -1,9 +1,9 @@
 // import 'package:flutter/material.dart';
-// import 'package:new_app/orders_page.dart';
+// import 'package:new_app/orders_screen.dart';
 // import 'package:provider/provider.dart';
 // import 'auth_provider.dart';
 // import 'login_screen.dart';
-// import 'payment.dart'; //
+// import 'payment_screen.dart'; //
 //
 // class HomeScreen extends StatelessWidget {
 //   const HomeScreen({super.key});
@@ -189,107 +189,134 @@
 //
 
 import 'package:flutter/material.dart';
-import 'package:new_app/orders_page.dart';
-import 'package:new_app/services/permission_screen.dart';
-import 'package:new_app/profile_screen.dart';
-import 'payment.dart';
+import 'package:new_app/screens/orders_screen.dart';
+import 'package:new_app/screens/permission_screen.dart';
+import 'package:new_app/screens/profile_screen.dart';
+import 'payment_screen.dart';
 
 class MainHome extends StatefulWidget {
   const MainHome({super.key});
+
   @override
   _MainHomeState createState() => _MainHomeState();
 }
 
 class _MainHomeState extends State<MainHome> {
   int _currentIndex = 0;
-
-  // Define the list of pages for each tab.
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
-    // The pages for each tab.
-    _pages = [
-      const ProfileScreen(), // Profile tab.
-      const OrdersPage(), // Orders tab.
-      const PaymentScreen(), // Payment tab.
-      const PermissionsScreen() // Permissions tab.
+    // Create each page only once.
+    _pages = const [
+      ProfileScreen(),     // Profile tab.
+      OrdersPage(),        // Orders tab.
+      PaymentScreen(),     // Payment tab.
+      PermissionsScreen(), // Permissions tab.
     ];
   }
 
-  /// Returns an AppBar only for Profile and Orders tabs.
-  PreferredSizeWidget? _buildAppBar() {
-    if (_currentIndex == 0) {
-      // Profile screen app bar.
-      return AppBar(
-        title: const Text("Profile"),
-        centerTitle: true,
-        backgroundColor: Colors.blueAccent,
-      );
-    } else if (_currentIndex == 1) {
-      // Orders screen app bar.
-      return AppBar(
-        title: const Text("Food Orders"),
-        centerTitle: true,
-        backgroundColor: Colors.blueAccent,
-      );
-    } else if (_currentIndex == 2) {
-      // Orders screen app bar.
-      return AppBar(
-        title: const Text("Payment"),
-        centerTitle: true,
-        backgroundColor: Colors.blueAccent,
-      );
-    }
-    else if (_currentIndex == 3) {
-      // Orders screen app bar.
-      return AppBar(
-        title: const Text("Permissions"),
-        centerTitle: true,
-        backgroundColor: Colors.blueAccent,
-      );
-    }
-    // For Payment and Permissions, return null (or you can create custom ones there).
-    return null;
+  PreferredSizeWidget _buildAppBar() {
+    // List of titles for the app bar.
+    final titles = ["Profile", "Food Orders", "Payment", "Permissions"];
+    return AppBar(
+      title: Text(titles[_currentIndex]),
+      centerTitle: true,
+      backgroundColor: Colors.blueAccent,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    print('Home Screen Build');
     return Scaffold(
       appBar: _buildAppBar(),
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
+      // Using IndexedStack to preserve state of each page.
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
           });
         },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: "Profile",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fastfood),
-            label: "Orders",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.payment),
-            label: "Payment",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.security),
-            label: "Permissions",
-          ),
-        ],
       ),
     );
   }
 }
 
+/// A custom bottom navigation bar that makes only the icon and label clickable.
+class CustomBottomNavigationBar extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
 
+  const CustomBottomNavigationBar({
+    Key? key,
+    required this.currentIndex,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Build a row with 4 items; spacing between items is provided by MainAxisAlignment.spaceAround.
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(4, (index) {
+          // Define icon and label for each tab.
+          IconData icon;
+          String label;
+          switch (index) {
+            case 0:
+              icon = Icons.home;
+              label = "Profile";
+              break;
+            case 1:
+              icon = Icons.fastfood;
+              label = "Orders";
+              break;
+            case 2:
+              icon = Icons.payment;
+              label = "Payment";
+              break;
+            case 3:
+              icon = Icons.security;
+              label = "Permissions";
+              break;
+            default:
+              icon = Icons.help;
+              label = "Unknown";
+          }
+          bool selected = index == currentIndex;
+          // Wrap only the icon and label in an InkWell.
+          return InkWell(
+            onTap: () => onTap(index),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: selected ? Colors.blueAccent : Colors.grey),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? Colors.blueAccent : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}

@@ -3,13 +3,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'auth_provider.dart';
-import 'firebase_options.dart';
-import 'signup_screen.dart';
-import 'home_screen.dart';
-import 'login_screen.dart';
+import 'auth_services/auth_provider.dart';
+import 'auth_services/firebase_options.dart';
+import 'screens/signup_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 import 'controller/categories_controller.dart';
-import 'orders_page.dart';
+import 'screens/orders_screen.dart';
 import 'services/notification_service.dart';
 
 /// Top-level background message handler.
@@ -105,6 +105,7 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('AuthWrapper Build');
     final authProvider = context.watch<AuthProvider>();
 
     if (authProvider.isLoading) {
