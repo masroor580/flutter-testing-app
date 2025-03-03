@@ -5,11 +5,10 @@ import 'login_screen.dart';
 
 /// ProfileScreen displays the current user's data and a logout button.
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key})
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    print('Profile Build');
 
     // Use listen: false because the user data is assumed not to change after fetching.
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
