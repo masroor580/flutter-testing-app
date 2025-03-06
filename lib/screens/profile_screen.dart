@@ -118,6 +118,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../auth_services/auth_provider.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';  // Import for navigation
 
 /// ProfileScreen displays the current user's data and a logout button.
 class ProfileScreen extends StatelessWidget {
@@ -127,82 +128,121 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     debugPrint('ProfileScreen Build');
 
-    // Get AuthProvider without listening to updates
-    final authProvider = context.read<AuthProvider>();
-    final user = authProvider.currentUser;
+    return Scaffold(
+      appBar: AppBar(title: const Text("Profile")),
+      bottomNavigationBar: _buildBottomNavBar(context),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            final user = authProvider.currentUser;
 
-    // If no user data is found, show an error message.
-    if (user == null) {
-      return const Center(
-        child: Text(
-          "No user data found",
-          style: TextStyle(fontSize: 18, color: Colors.red),
-        ),
-      );
-    }
+            // ✅ Show loading indicator while fetching data
+            if (authProvider.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Profile Image
-          const CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, size: 50, color: Colors.blueAccent),
-          ),
-          const SizedBox(height: 20),
+            // ❌ If no user data is found, show an error message.
+            if (user == null) {
+              return const Center(
+                child: Text(
+                  "No user data found",
+                  style: TextStyle(fontSize: 18, color: Colors.red),
+                ),
+              );
+            }
 
-          // User Details: Full Name and Email
-          Text(
-            user['fullName'] ?? "User Name",
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            user['email'] ?? "user@example.com",
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 20),
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 20),
 
-          // Additional Profile Items (e.g., Phone and Email)
-          ProfileItem(icon: Icons.phone, title: "Phone", value: user['phone']),
-          ProfileItem(icon: Icons.email, title: "Email", value: user['email']),
-          const SizedBox(height: 30),
+                  // ✅ Profile Picture (for Google Users)
+                  _buildProfilePicture(user['photoUrl']),
 
-          // Logout Button
-          ElevatedButton.icon(
-            onPressed: () async {
-              final authProvider = context.read<AuthProvider>(); // Use read to prevent rebuilds
-              await authProvider.logout();
+                  const SizedBox(height: 10),
 
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      (route) => false,
-                );
-              }
-            },
-            icon: const Icon(Icons.logout, color: Colors.white),
-            label: const Text("Logout", style: TextStyle(fontSize: 18, color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                  // ✅ Display User Name & Email
+                  Text(
+                    user['fullName'] ?? "User Name",
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    user['email'] ?? "user@example.com",
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ✅ Display Phone Number
+                  ProfileItem(icon: Icons.phone, title: "Phone", value: user['phone']),
+                  ProfileItem(icon: Icons.email, title: "Email", value: user['email']),
+                  const SizedBox(height: 30),
+
+                  // ✅ Logout Button
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await context.read<AuthProvider>().logout();
+                      if (context.mounted) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              (route) => false,
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    label: const Text("Logout", style: TextStyle(fontSize: 18, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      minimumSize: const Size(double.infinity, 50),
+                      elevation: 5,
+                    ),
+                  ),
+                ],
               ),
-              minimumSize: const Size(double.infinity, 50),
-              elevation: 5,
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  /// ✅ Profile Picture Widget
+  Widget _buildProfilePicture(String? photoUrl) {
+    return CircleAvatar(
+      radius: 50,
+      backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+          ? NetworkImage(photoUrl)
+          : const AssetImage('assets/default_avatar.png') as ImageProvider, // Default avatar
+    );
+  }
+
+  /// ✅ Bottom Navigation Bar
+  Widget _buildBottomNavBar(BuildContext context) {
+    return BottomNavigationBar(
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+      ],
+      currentIndex: 1, // Set Profile as active tab
+      onTap: (index) {
+        if (index == 0) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MainHome()),
+          );
+        }
+      },
     );
   }
 }
 
-/// Profile Item Widget (Now Stateless to Improve Performance)
+/// ✅ Optimized Profile Item Widget
 class ProfileItem extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -217,8 +257,6 @@ class ProfileItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('Building Profile Item: $title');
-
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),

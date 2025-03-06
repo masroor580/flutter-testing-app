@@ -209,6 +209,9 @@ class AuthProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   User? _user;
+
+  User? get user => _user;  // ✅ Public getter for _user
+
   Map<String, dynamic>? _currentUser;
   bool _isLoading = true;
 
@@ -222,11 +225,12 @@ class AuthProvider with ChangeNotifier {
     _initAuthProvider();
   }
 
-  /// ✅ Initialize AuthProvider (Fixes Cache Issues)
+  /// ✅ Initialize AuthProvider
   Future<void> _initAuthProvider() async {
-    authBox = await Hive.openBox('authBox'); // Open once, reuse
-    await _checkUserLogin();
+    authBox = await Hive.openBox('authBox');
+    await _checkUserLogin(); // Ensure it's awaited properly
   }
+
 
   /// ✅ Check if user is logged in at app startup
   Future<void> _checkUserLogin() async {
@@ -234,47 +238,68 @@ class AuthProvider with ChangeNotifier {
       String? uid = authBox.get('userId');
       _user = _firebaseAuth.currentUser;
 
+      debugPrint("ℹ️ Firebase Auth User: $_user");
+      debugPrint("ℹ️ Hive stored UID: $uid");
+
       if (_user != null && uid != null && _user!.uid == uid) {
-        await _fetchUserData(uid);
+        _currentUser = authBox.get('userData');
+
+        // Debug: Check Hive storage
+        debugPrint("🔍 User data retrieved from Hive: $_currentUser");
+
+        if (_currentUser == null) {
+          await _fetchUserData(uid);
+        }
       } else {
         await _clearUserData();
       }
     } catch (e) {
-      debugPrint("Error checking login status: $e");
+      debugPrint("🔥 Error checking login status: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// ✅ Fetch user data from Firestore (Lazy-Load Optimization)
+
+
+  /// ✅ Fetch user data from Firestore
+  /// ✅ Fetch user data from Firestore
   Future<void> _fetchUserData(String uid) async {
     try {
       DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists && doc.data() != null) {
-        _currentUser = doc.data() as Map<String, dynamic>;
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-        await authBox.put('userData', _currentUser);
+        // Debug: Print fetched data
+        debugPrint("✅ User data fetched from Firestore: $data");
+
+        // Convert Firestore Timestamp to DateTime
+        data.forEach((key, value) {
+          if (value is Timestamp) {
+            data[key] = value.toDate();
+          }
+        });
+
+        // ✅ Save data in Hive and update provider
+        _currentUser = data;
+        authBox.put('userData', _currentUser);
+        notifyListeners();
       } else {
-        _currentUser = null;
+        debugPrint("⚠️ No user document found in Firestore for UID: $uid");
       }
     } catch (e) {
-      debugPrint("Error fetching user data: $e");
-    } finally {
-      notifyListeners();
+      debugPrint("🔥 Error fetching user data: $e");
     }
   }
 
-  /// ✅ Update user data
-  void updateUser(Map<String, dynamic>? userData) {
-    _currentUser = userData;
-    notifyListeners();
-  }
 
-  /// ✅ Google Sign-In (Fixes Memory Issues)
+
+
+  /// ✅ Google Sign-In
   Future<String?> signInWithGoogle() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
+      final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) return "Google sign-in canceled";
 
@@ -284,20 +309,47 @@ class AuthProvider with ChangeNotifier {
         accessToken: googleAuth.accessToken,
       );
 
-      final UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
-      _user = userCredential.user;
-      if (_user != null) {
-        await authBox.put('userId', _user!.uid);
-        await _fetchUserData(_user!.uid);
-        return null; // Success
+      final UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final user = userCredential.user;
+      if (user != null) {
+        authBox.put('userId', user.uid);
+        await _fetchUserData(user.uid);
+
+        // ✅ Force UI to update
+        notifyListeners();
       }
-      return "Google sign-in failed";
+
+
+      if (user == null) return "Google sign-in failed";
+
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+
+      // ✅ If user does not exist in Firestore, create a new record
+      if (!userDoc.exists) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'fullName': user.displayName ?? "No Name",
+          'email': user.email ?? "No Email",
+          'uid': user.uid,
+          'phone': user.phoneNumber ?? "No Phone",
+          'photoUrl': user.photoURL ?? "",
+        });
+      }
+
+      // ✅ Fetch and store user data in Hive after login
+      await _fetchUserData(user.uid);
+
+      return null;
     } catch (e) {
-      return "Google sign-in error: $e";
+      return "Error signing in with Google: $e";
     }
   }
 
-  /// ✅ Signup function
+
+
+
+
   Future<String?> signUp(String fullName, String email, String phone, String password) async {
     try {
       var existingUser = await _firestore.collection('users').where('email', isEqualTo: email).get();
@@ -339,13 +391,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// ✅ Check if input is a phone number
   bool _isPhoneNumber(String input) {
-    final phoneRegex = RegExp(r'^[0-9]{4,11}$');
-    return phoneRegex.hasMatch(input);
+    return RegExp(r'^[0-9]{4,11}$').hasMatch(input);
   }
 
-  /// ✅ Get email from phone number
   Future<String?> _getEmailFromPhone(String phoneNumber) async {
     try {
       QuerySnapshot query = await _firestore.collection('users')
@@ -361,7 +410,6 @@ class AuthProvider with ChangeNotifier {
     return null;
   }
 
-  /// ✅ Login with email and password
   Future<String?> _loginWithEmail(String email, String password) async {
     try {
       UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
@@ -370,7 +418,7 @@ class AuthProvider with ChangeNotifier {
       );
       _user = userCredential.user;
       if (_user != null) {
-        await authBox.put('userId', _user!.uid);
+        authBox.put('userId', _user!.uid);
         await _fetchUserData(_user!.uid);
       }
       return null;
@@ -379,25 +427,24 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// ✅ Logout function (Fixes Memory Leak)
   Future<void> logout() async {
     await _firebaseAuth.signOut();
+    await GoogleSignIn().signOut();
     await _clearUserData();
     notifyListeners();
   }
 
-  /// ✅ Clear user data (Prevents Stale Data)
   Future<void> _clearUserData() async {
     _user = null;
     _currentUser = null;
     await authBox.delete('userId');
     await authBox.delete('userData');
+    notifyListeners();
   }
 
-  /// ✅ Dispose (Fixes Memory Leak)
   @override
   void dispose() {
-    authBox.close(); // Close Hive box to free memory
+    authBox.close();
     super.dispose();
   }
 }

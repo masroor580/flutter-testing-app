@@ -80,11 +80,6 @@ import 'package:flutter/material.dart';
 class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
-  /// Initializes notifications:
-  /// - Requests permission every time the app starts.
-  /// - Retrieves and prints the FCM token after 2 seconds.
-  /// - Listens for token refresh events.
-  /// - Sets up listeners for foreground messages.
   Future<void> init(BuildContext context) async {
     // Always request permission when the app starts
     NotificationSettings settings = await _messaging.requestPermission(

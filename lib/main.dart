@@ -119,6 +119,7 @@
 //   }
 // }
 
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -215,7 +216,7 @@ class _NotificationInitializerState extends State<NotificationInitializer> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.child;
+    return widget.child; // No debugPrint here to avoid excessive logs
   }
 }
 
@@ -227,14 +228,22 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     debugPrint('🔄 AuthWrapper Build');
 
-    final authProvider = context.watch<AuthProvider>();
+    return Selector<AuthProvider, bool>(
+      selector: (_, auth) => auth.isLoading, // Only listens to `isLoading`
+      builder: (context, isLoading, child) {
+        if (isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    if (authProvider.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return authProvider.currentUser != null ? const MainHome() : const LoginScreen();
+        return Selector<AuthProvider, bool>(
+          selector: (_, auth) => auth.currentUser != null, // Only listens to `currentUser`
+          builder: (context, isLoggedIn, child) {
+            return isLoggedIn ? const MainHome() : const LoginScreen();
+          },
+        );
+      },
+    );
   }
 }
