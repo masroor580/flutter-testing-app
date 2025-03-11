@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -9,49 +9,47 @@ class AuthProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   User? _user;
-
-  User? get user => _user;  // ✅ Public getter for _user
-
   Map<String, dynamic>? _currentUser;
   bool _isLoading = true;
-
   late Box authBox;
 
-  User? get firebaseUser => _user;
+  final GoogleSignIn googleSignIn = GoogleSignIn();
+
+  User? get user => _user;
   Map<String, dynamic>? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
-
-  final GoogleSignIn googleSignIn = GoogleSignIn();
 
   AuthProvider() {
     _initAuthProvider();
   }
 
-  /// ✅ Initialize AuthProvider
+  /// ✅ Initialize AuthProvider & check login state
   Future<void> _initAuthProvider() async {
-    authBox = await Hive.openBox('authBox');
-    await _checkUserLogin(); // Ensure it's awaited properly
+    authBox = await Hive.openBox('authBox'); // Open Hive box first
+    await _checkUserLogin();
   }
 
-
-  /// ✅ Check if user is logged in at app startup
+  /// ✅ Check if user is logged in
   Future<void> _checkUserLogin() async {
     try {
+      _isLoading = true;
+      notifyListeners();
+
       String? uid = authBox.get('userId');
-      _user = _firebaseAuth.currentUser;
+      _user = _firebaseAuth.currentUser; // Get current Firebase user
 
       debugPrint("ℹ️ Firebase Auth User: $_user");
       debugPrint("ℹ️ Hive stored UID: $uid");
 
-      if (_user != null && uid != null && _user!.uid == uid) {
-        _currentUser = authBox.get('userData');
+      if (_user == null && uid != null) {
+        // If Firebase user is null, try to restore session using stored UID
+        debugPrint("🔄 Firebase user is null, but UID found in Hive. Checking Firestore...");
+        await _fetchUserData(uid);
+        _user = FirebaseAuth.instance.currentUser;
+      }
 
-        // Debug: Check Hive storage
-        debugPrint("🔍 User data retrieved from Hive: $_currentUser");
-
-        if (_currentUser == null) {
-          await _fetchUserData(uid);
-        }
+      if (_user != null) {
+        await _fetchUserData(_user!.uid);
       } else {
         await _clearUserData();
       }
@@ -63,35 +61,26 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  void setLoading(bool value) {
-    _isLoading = value;
-    notifyListeners();
-  }
-
-
-
-  /// ✅ Fetch user data from Firestore
-  /// ✅ Fetch user data from Firestore
+  /// ✅ Fetch user data from Firestore and save in Hive
   Future<void> _fetchUserData(String uid) async {
     try {
       DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-        // Debug: Print fetched data
-        debugPrint("✅ User data fetched from Firestore: $data");
-
-        // Convert Firestore Timestamp to DateTime
+        // Convert Firestore Timestamps to DateTime
         data.forEach((key, value) {
           if (value is Timestamp) {
             data[key] = value.toDate();
           }
         });
 
-        // ✅ Save data in Hive and update provider
         _currentUser = data;
         authBox.put('userData', _currentUser);
+        authBox.put('userId', uid);
+
         notifyListeners();
+        debugPrint("✅ User data loaded from Firestore: $data");
       } else {
         debugPrint("⚠️ No user document found in Firestore for UID: $uid");
       }
@@ -100,20 +89,16 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-
-
-
   /// ✅ Google Sign-In
   Future<void> signInWithGoogle() async {
     try {
       setLoading(true);
 
-      await googleSignIn.signOut(); // Force account selection
-
+      await googleSignIn.signOut(); // Ensure fresh login
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         setLoading(false);
-        return; // User canceled login
+        return;
       }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -124,13 +109,10 @@ class AuthProvider with ChangeNotifier {
 
       UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
       _user = userCredential.user;
-      notifyListeners();
 
-      // ✅ Store user data in Firestore
+      // ✅ Store user data
       await saveUserToFirestore(_user);
-
-      // ✅ Fetch user details from Firestore
-      await loadUserFromFirestore(_user!.uid);
+      await _fetchUserData(_user!.uid);
 
       debugPrint("✅ Google Sign-In Success: ${_user?.email}");
     } catch (e) {
@@ -140,21 +122,10 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  bool _isPasswordObscured = true;
-
-  bool get isPasswordObscured => _isPasswordObscured;
-
-  void togglePasswordVisibility() {
-    _isPasswordObscured = !_isPasswordObscured;
-    notifyListeners(); // 🔥 Only rebuilds `Selector`, not the whole screen
-  }
-
   Future<void> saveUserToFirestore(User? user) async {
     if (user == null) return;
 
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-    // ✅ Check if user already exists
+    final userDoc = _firestore.collection('users').doc(user.uid);
     final userSnapshot = await userDoc.get();
 
     if (!userSnapshot.exists) {
@@ -172,25 +143,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> loadUserFromFirestore(String uid) async {
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(uid);
-    final userSnapshot = await userDoc.get();
-
-    if (userSnapshot.exists) {
-      final userData = userSnapshot.data();
-      if (userData != null) {
-        _user = FirebaseAuth.instance.currentUser; // Update local user
-        notifyListeners();
-        debugPrint("✅ User data loaded from Firestore");
-      }
-    } else {
-      debugPrint("❌ No user data found in Firestore");
-    }
-  }
-
-
-
-  Future<String?> signUp(String fullName, String email, String phone, String password) async {
+    Future<String?> signUp(String fullName, String email, String phone, String password) async {
     try {
       var existingUser = await _firestore.collection('users').where('email', isEqualTo: email).get();
       if (existingUser.docs.isNotEmpty) return "This email is already registered.";
@@ -219,15 +172,22 @@ class AuthProvider with ChangeNotifier {
   /// ✅ Login with Email/Password OR Phone/Password
   Future<String?> login(String identifier, String password) async {
     try {
-      if (_isPhoneNumber(identifier)) {
-        String? email = await _getEmailFromPhone(identifier);
-        if (email == null) return "Phone number not registered.";
-        return await _loginWithEmail(email, password);
-      } else {
-        return await _loginWithEmail(identifier, password);
+      String? email = _isPhoneNumber(identifier) ? await _getEmailFromPhone(identifier) : identifier;
+      if (email == null) return "Phone number not registered.";
+
+      UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      _user = userCredential.user;
+      if (_user != null) {
+        authBox.put('userId', _user!.uid);
+        await _fetchUserData(_user!.uid);
       }
+      return null;
     } catch (e) {
-      return "Login failed: $e";
+      return "Invalid credentials";
     }
   }
 
@@ -250,26 +210,19 @@ class AuthProvider with ChangeNotifier {
     return null;
   }
 
-  Future<String?> _loginWithEmail(String email, String password) async {
-    try {
-      UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _user = userCredential.user;
-      if (_user != null) {
-        authBox.put('userId', _user!.uid);
-        await _fetchUserData(_user!.uid);
-      }
-      return null;
-    } catch (e) {
-      return "Invalid credentials";
-    }
+  bool _isPasswordObscured = true; // Default state is obscured
+
+  bool get isPasswordObscured => _isPasswordObscured;
+
+  void togglePasswordVisibility() {
+    _isPasswordObscured = !_isPasswordObscured;
+    notifyListeners(); // 🔥 Notify UI to rebuild
   }
 
+  /// ✅ Logout
   Future<void> logout() async {
     await _firebaseAuth.signOut();
-    await GoogleSignIn().signOut();
+    await googleSignIn.signOut();
     await _clearUserData();
     notifyListeners();
   }
@@ -281,6 +234,14 @@ class AuthProvider with ChangeNotifier {
     await authBox.delete('userData');
     notifyListeners();
   }
+
+  void setLoading(bool value) {
+    if (_isLoading != value) {
+      _isLoading = value;
+      notifyListeners(); // 🔥 Ensure UI updates
+    }
+  }
+
 
   @override
   void dispose() {
