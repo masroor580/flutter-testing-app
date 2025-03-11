@@ -221,6 +221,8 @@ class AuthProvider with ChangeNotifier {
   Map<String, dynamic>? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
 
+  final GoogleSignIn googleSignIn = GoogleSignIn();
+
   AuthProvider() {
     _initAuthProvider();
   }
@@ -261,6 +263,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  void setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
 
 
   /// ✅ Fetch user data from Firestore
@@ -297,56 +304,81 @@ class AuthProvider with ChangeNotifier {
 
 
   /// ✅ Google Sign-In
-  Future<String?> signInWithGoogle() async {
+  Future<void> signInWithGoogle() async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
+      setLoading(true);
+
+      await googleSignIn.signOut(); // Force account selection
+
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return "Google sign-in canceled";
+      if (googleUser == null) {
+        setLoading(false);
+        return; // User canceled login
+      }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
+      final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
+      _user = userCredential.user;
+      notifyListeners();
 
-      final user = userCredential.user;
-      if (user != null) {
-        authBox.put('userId', user.uid);
-        await _fetchUserData(user.uid);
+      // ✅ Store user data in Firestore
+      await saveUserToFirestore(_user);
 
-        // ✅ Force UI to update
-        notifyListeners();
-      }
+      // ✅ Fetch user details from Firestore
+      await loadUserFromFirestore(_user!.uid);
 
-
-      if (user == null) return "Google sign-in failed";
-
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-
-      // ✅ If user does not exist in Firestore, create a new record
-      if (!userDoc.exists) {
-        await _firestore.collection('users').doc(user.uid).set({
-          'fullName': user.displayName ?? "No Name",
-          'email': user.email ?? "No Email",
-          'uid': user.uid,
-          'phone': user.phoneNumber ?? "No Phone",
-          'photoUrl': user.photoURL ?? "",
-        });
-      }
-
-      // ✅ Fetch and store user data in Hive after login
-      await _fetchUserData(user.uid);
-
-      return null;
+      debugPrint("✅ Google Sign-In Success: ${_user?.email}");
     } catch (e) {
-      return "Error signing in with Google: $e";
+      debugPrint("❌ Google Sign-In Error: $e");
+    } finally {
+      setLoading(false);
     }
   }
 
 
+  Future<void> saveUserToFirestore(User? user) async {
+    if (user == null) return;
+
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+    // ✅ Check if user already exists
+    final userSnapshot = await userDoc.get();
+
+    if (!userSnapshot.exists) {
+      await userDoc.set({
+        'uid': user.uid,
+        'fullName': user.displayName ?? "No Name",
+        'email': user.email,
+        'photoUrl': user.photoURL ?? "",
+        'phone': user.phoneNumber ?? "",
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint("✅ New user added to Firestore: ${user.email}");
+    } else {
+      debugPrint("ℹ️ User already exists in Firestore");
+    }
+  }
+
+  Future<void> loadUserFromFirestore(String uid) async {
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(uid);
+    final userSnapshot = await userDoc.get();
+
+    if (userSnapshot.exists) {
+      final userData = userSnapshot.data();
+      if (userData != null) {
+        _user = FirebaseAuth.instance.currentUser; // Update local user
+        notifyListeners();
+        debugPrint("✅ User data loaded from Firestore");
+      }
+    } else {
+      debugPrint("❌ No user data found in Firestore");
+    }
+  }
 
 
 

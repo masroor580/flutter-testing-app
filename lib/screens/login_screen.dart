@@ -309,10 +309,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    authProvider.setLoading(true); // Start loading before login
+
     String emailOrPhone = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
     String? result = await authProvider.login(emailOrPhone, password);
+
+    authProvider.setLoading(false); // Stop loading after login attempt
 
     if (!mounted) return;
 
@@ -325,17 +330,33 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+
   Future<void> _handleGoogleSignIn() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    authProvider.setLoading(true); // Start loading before Google Sign-In
+
     await authProvider.signInWithGoogle();
+
+    authProvider.setLoading(false); // Stop loading after Google Sign-In
 
     if (!mounted) return;
 
-    if (authProvider.user != null) {  // ✅ Correct (uses public getter)
-      Navigator.pushReplacementNamed(context, '/home');
-    }
+    /// Debugging: Print user details
+    debugPrint("Google Sign-In user: ${authProvider.user?.email}");
 
+    if (authProvider.user != null) {
+      /// Navigate to Profile/Home Screen (Change `/home` to your actual route)
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      /// Show error if sign-in failed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Google Sign-In failed, please try again.")),
+      );
+    }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -412,10 +433,13 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
 
               /// Login Button
+              /// Login Button
+              /// Login Button
+              /// Login Button
               ElevatedButton(
-                onPressed: _handleLogin,
+                onPressed: _handleLogin,  // Call the login function
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: Colors.blue,  // Keep the previous style
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -426,6 +450,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
               ),
+
               const SizedBox(height: 15),
 
               /// Google Sign-In Button

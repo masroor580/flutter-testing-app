@@ -118,7 +118,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../auth_services/auth_provider.dart';
 import 'login_screen.dart';
-import 'home_screen.dart';  // Import for navigation
 
 /// ProfileScreen displays the current user's data and a logout button.
 class ProfileScreen extends StatelessWidget {
@@ -126,16 +125,14 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('ProfileScreen Build');
+    debugPrint('🔄 ProfileScreen Rebuild');
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Profile")),
-      bottomNavigationBar: _buildBottomNavBar(context),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
-            final user = authProvider.currentUser;
+            final user = authProvider.user;
 
             // ✅ Show loading indicator while fetching data
             if (authProvider.isLoading) {
@@ -159,24 +156,24 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ✅ Profile Picture (for Google Users)
-                  _buildProfilePicture(user['photoUrl']),
+                  _buildProfilePicture(user.photoURL),
 
                   const SizedBox(height: 10),
 
                   // ✅ Display User Name & Email
                   Text(
-                    user['fullName'] ?? "User Name",
+                    user.displayName ?? "User Name",
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    user['email'] ?? "user@example.com",
+                    user.email ?? "user@example.com",
                     style: const TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   const SizedBox(height: 20),
 
                   // ✅ Display Phone Number
-                  ProfileItem(icon: Icons.phone, title: "Phone", value: user['phone']),
-                  ProfileItem(icon: Icons.email, title: "Email", value: user['email']),
+                  ProfileItem(icon: Icons.phone, title: "Phone", value: user.phoneNumber),
+                  ProfileItem(icon: Icons.email, title: "Email", value: user.email),
                   const SizedBox(height: 30),
 
                   // ✅ Logout Button
@@ -216,28 +213,13 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildProfilePicture(String? photoUrl) {
     return CircleAvatar(
       radius: 50,
-      backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+      backgroundColor: Colors.grey[300], // Light background for avatar
+      backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
           ? NetworkImage(photoUrl)
-          : const AssetImage('assets/default_avatar.png') as ImageProvider, // Default avatar
-    );
-  }
-
-  /// ✅ Bottom Navigation Bar
-  Widget _buildBottomNavBar(BuildContext context) {
-    return BottomNavigationBar(
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-      ],
-      currentIndex: 1, // Set Profile as active tab
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MainHome()),
-          );
-        }
-      },
+          : null, // If no image, use an icon instead
+      child: (photoUrl == null || photoUrl.isEmpty)
+          ? const Icon(Icons.account_circle, size: 80, color: Colors.grey)
+          : null, // Show default icon if no image
     );
   }
 }
