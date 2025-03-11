@@ -14,8 +14,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  bool _obscurePassword = true;
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -27,10 +25,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (value == null || value
         .trim()
         .isEmpty) {
-      return "Email or phone number is required";
+      return "Please enter email or phone number";
     }
     bool isValidEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
-    bool isValidPhone = RegExp(r'^[0-9]{4,11}$').hasMatch(value);
+    bool isValidPhone = RegExp(r'^\d{4,11}$').hasMatch(value);
     if (!isValidEmail && !isValidPhone) {
       return "Enter a valid email or phone number";
     }
@@ -50,18 +48,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    authProvider.setLoading(true); // Start loading before login
+    // 🔥 Start loading immediately
+    authProvider.setLoading(true);
+
+    if (!_formKey.currentState!.validate()) {
+      authProvider.setLoading(false); // ❌ Stop loading if validation fails
+      return;
+    }
 
     String emailOrPhone = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
     String? result = await authProvider.login(emailOrPhone, password);
 
-    authProvider.setLoading(false); // Stop loading after login attempt
+    authProvider.setLoading(false); // ✅ Stop loading after login attempt
 
     if (!mounted) return;
 
@@ -77,12 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleGoogleSignIn() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    authProvider.setLoading(true); // Start loading before Google Sign-In
-
     await authProvider.signInWithGoogle();
-
-    authProvider.setLoading(false); // Stop loading after Google Sign-In
 
     if (!mounted) return;
 
@@ -91,27 +88,23 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    debugPrint("Rebuilding Login Widget");
-
-    return Selector<AuthProvider, bool>(
-      selector: (_, auth) => auth.isLoading,
-      builder: (context, isLoading, child) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
         return Stack(
           children: [
-            child!,
-            if (isLoading)
+            _buildLoginUI(), // Make sure UI rebuilds
+            if (authProvider.isLoading)
               Container(
                 color: Colors.black.withOpacity(0.5),
                 child: const Center(
-                    child: CircularProgressIndicator(color: Colors.white)),
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
               ),
           ],
         );
       },
-      child: _buildLoginUI(),
     );
   }
 
@@ -164,27 +157,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
               /// Password Field
               _buildPasswordField(),
-
               const SizedBox(height: 20),
 
               /// Login Button
-              /// Login Button
-              /// Login Button
-              /// Login Button
               ElevatedButton(
-                onPressed: _handleLogin, // Call the login function
+                onPressed: _handleLogin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // Keep the previous style
+                  backgroundColor: Colors.blue,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 40, vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                      borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text(
-                  "Login",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
+                child: const Text("Login",
+                    style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
 
               const SizedBox(height: 15),
@@ -197,14 +183,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 40, vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                      borderRadius: BorderRadius.circular(10)),
                 ),
-                icon: const Icon(Icons.g_mobiledata, color: Colors.white),
-                label: const Text(
-                  "Sign in with Google",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
+                icon: const Icon(Icons.login, color: Colors.white),
+                label: const Text("Sign in with Google",
+                    style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
               const SizedBox(height: 15),
 
@@ -213,10 +196,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.pushReplacementNamed(context, '/signup');
                 },
-                child: const Text(
-                  "Don't have an account? Sign Up",
-                  style: TextStyle(fontSize: 14, color: Colors.blue),
-                ),
+                child: const Text("Don't have an account? Sign Up",
+                    style: TextStyle(fontSize: 14, color: Colors.blue)),
               ),
             ],
           ),
@@ -243,11 +224,12 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       },
     );
-  }
+  } // ❌ Removed the extra closing bracket here
 }
 
 
-  class CustomTextField extends StatelessWidget {
+  /// ✅ **Reusable Custom TextField**
+class CustomTextField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final bool isPassword;
@@ -267,7 +249,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint("Rebuilding CustomTextField: $label");
     return TextFormField(
       controller: controller,
       obscureText: isPassword ? (obscureText ?? true) : false,

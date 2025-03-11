@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +26,7 @@ Future<void> _initializeApp() async {
   await Hive.initFlutter();
 
   try {
-    await Hive.openBox('authBox');
+    await Hive.openBox('authBox'); // ✅ Open Hive box for user data
   } catch (e) {
     debugPrint("❌ Hive initialization error: $e");
   }
@@ -51,7 +50,7 @@ class MyApp extends StatelessWidget {
       providers: _buildProviders(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: const NotificationInitializer(child: AuthWrapper()),
+        home: const NotificationInitializer(child: AuthWrapper()), // ✅ Use AuthWrapper
         routes: {
           '/signup': (context) => const SignUpScreen(),
           '/login': (context) => const LoginScreen(),
@@ -66,6 +65,7 @@ class MyApp extends StatelessWidget {
   List<ChangeNotifierProvider> _buildProviders() {
     return [
       ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+      // ✅ Auto-check login
       ChangeNotifierProvider<CategoryController>(create: (_) => CategoryController()),
     ];
   }
@@ -108,7 +108,7 @@ class AuthWrapper extends StatelessWidget {
     debugPrint('🔄 AuthWrapper Build');
 
     return Selector<AuthProvider, bool>(
-      selector: (_, auth) => auth.isLoading, // Only listens to `isLoading`
+      selector: (_, auth) => auth.isLoading,
       builder: (context, isLoading, child) {
         if (isLoading) {
           return const Scaffold(
@@ -117,9 +117,9 @@ class AuthWrapper extends StatelessWidget {
         }
 
         return Selector<AuthProvider, bool>(
-          selector: (_, auth) => auth.currentUser != null, // Only listens to `currentUser`
+          selector: (_, auth) => auth.currentUser != null,
           builder: (context, isLoggedIn, child) {
-            return isLoggedIn ? const MainHome() : const LoginScreen();
+            return isLoggedIn ? const MainHome() : const LoginScreen(); // ✅ Persistent login check
           },
         );
       },
