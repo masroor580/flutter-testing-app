@@ -258,10 +258,8 @@
 //   }
 // }
 
-import 'package:firebase_auth/firebase_auth.dart' as firebaseAuth;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import '../auth_services/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -277,7 +275,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _isNavigating = false;
 
   @override
   void dispose() {
@@ -311,21 +308,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isNavigating = true;
-    });
-
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    authProvider.setLoading(true); // Start loading before login
+
     String emailOrPhone = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
     String? result = await authProvider.login(emailOrPhone, password);
 
-    if (!mounted) return;
+    authProvider.setLoading(false); // Stop loading after login attempt
 
-    setState(() {
-      _isNavigating = false;
-    });
+    if (!mounted) return;
 
     if (result == null) {
       Navigator.pushReplacementNamed(context, '/home');
@@ -336,160 +330,181 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+
   Future<void> _handleGoogleSignIn() async {
-    setState(() {
-      _isNavigating = true;
-    });
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) throw "Google sign-in canceled";
+    authProvider.setLoading(true); // Start loading before Google Sign-In
 
-      final googleAuth = await googleUser.authentication;
-      final credential = firebaseAuth.GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-        accessToken: googleAuth.accessToken,
-      );
+    await authProvider.signInWithGoogle();
 
-      final userCredential =
-      await firebaseAuth.FirebaseAuth.instance.signInWithCredential(credential);
+    authProvider.setLoading(false); // Stop loading after Google Sign-In
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      setState(() {
-        _isNavigating = false;
-      });
+    /// Debugging: Print user details
+    debugPrint("Google Sign-In user: ${authProvider.user?.email}");
 
-      if (userCredential.user != null) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _isNavigating = false;
-      });
-
+    if (authProvider.user != null) {
+      /// Navigate to Profile/Home Screen (Change `/home` to your actual route)
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      /// Show error if sign-in failed
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In failed: $error")),
+        const SnackBar(content: Text("Google Sign-In failed, please try again.")),
       );
     }
   }
 
+
+
   @override
   Widget build(BuildContext context) {
+    debugPrint("Rebuilding Login Widget");
+
+    return Selector<AuthProvider, bool>(
+      selector: (_, auth) => auth.isLoading,
+      builder: (context, isLoading, child) {
+        return Stack(
+          children: [
+            child!,
+            if (isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.5),
+                child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+              ),
+          ],
+        );
+      },
+      child: _buildLoginUI(),
+    );
+  }
+
+  Widget _buildLoginUI() {
     return Scaffold(
       backgroundColor: Colors.grey[200],
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: Card(
-                      elevation: 5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Form(
-                          key: _formKey,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                "Welcome Back!",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              CustomTextField(
-                                label: "Email / Phone",
-                                controller: _emailController,
-                                isPassword: false,
-                                validator: _validateEmailOrPhone,
-                              ),
-                              const SizedBox(height: 10),
-                              CustomTextField(
-                                label: "Password",
-                                controller: _passwordController,
-                                isPassword: true,
-                                validator: _validatePassword,
-                                obscureText: _obscurePassword,
-                                onToggleObscure: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                onPressed: _handleLogin,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Login",
-                                  style: TextStyle(fontSize: 16, color: Colors.white),
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              ElevatedButton.icon(
-                                onPressed: _handleGoogleSignIn,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.redAccent,
-                                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.g_mobiledata, color: Colors.white),
-                                label: const Text(
-                                  "Sign in with Google",
-                                  style: TextStyle(fontSize: 16, color: Colors.white),
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pushReplacementNamed(context, '/signup');
-                                },
-                                child: const Text(
-                                  "Don't have an account? Sign Up",
-                                  style: TextStyle(fontSize: 14, color: Colors.blue),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: _buildLoginForm(),
               ),
             ),
           ),
-          if (_isNavigating)
-            Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
-            ),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Welcome Back!",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+
+              /// Email / Phone Field
+              CustomTextField(
+                label: "Email / Phone",
+                controller: _emailController,
+                isPassword: false,
+                validator: _validateEmailOrPhone,
+              ),
+              const SizedBox(height: 10),
+
+              /// Password Field
+              _buildPasswordField(),
+
+              const SizedBox(height: 20),
+
+              /// Login Button
+              /// Login Button
+              /// Login Button
+              /// Login Button
+              ElevatedButton(
+                onPressed: _handleLogin,  // Call the login function
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,  // Keep the previous style
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  "Login",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              /// Google Sign-In Button
+              ElevatedButton.icon(
+                onPressed: _handleGoogleSignIn,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.g_mobiledata, color: Colors.white),
+                label: const Text(
+                  "Sign in with Google",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              /// Sign-Up Navigation
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, '/signup');
+                },
+                child: const Text(
+                  "Don't have an account? Sign Up",
+                  style: TextStyle(fontSize: 14, color: Colors.blue),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return Selector<AuthProvider, bool>(
+      selector: (_, auth) => auth.isLoading,
+      builder: (context, isLoading, child) {
+        return CustomTextField(
+          label: "Password",
+          controller: _passwordController,
+          isPassword: true,
+          validator: _validatePassword,
+          obscureText: _obscurePassword,
+          onToggleObscure: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
+        );
+      },
     );
   }
 }
@@ -499,7 +514,7 @@ class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
   final bool isPassword;
   final String? Function(String?)? validator;
-  final bool? obscureText; // Change to nullable with default
+  final bool? obscureText;
   final VoidCallback? onToggleObscure;
 
   const CustomTextField({
@@ -508,29 +523,24 @@ class CustomTextField extends StatelessWidget {
     required this.controller,
     required this.isPassword,
     this.validator,
-    this.obscureText, // 👈 Make it optional
+    this.obscureText,
     this.onToggleObscure,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    debugPrint("Rebuilding CustomTextField: $label");
     return TextFormField(
       controller: controller,
-      obscureText: isPassword ? (obscureText ?? true) : false, // 👈 Ensure default value
+      obscureText: isPassword ? (obscureText ?? true) : false,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        hintText: "Enter your $label",
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(
-            (obscureText ?? true) ? Icons.visibility : Icons.visibility_off,
-          ),
+          icon: Icon((obscureText ?? true) ? Icons.visibility : Icons.visibility_off),
           onPressed: onToggleObscure,
-          tooltip: (obscureText ?? true) ? "Show password" : "Hide password",
         )
             : null,
       ),

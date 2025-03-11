@@ -43,10 +43,6 @@ class DioService {
     );
 
     _initializeCache();
-    //Dio dio = Dio(options);
-
-// Disable cache for now
-// dio.interceptors.add(DioCacheInterceptor(options: cacheOptions));
   }
 
   Future<void> _initializeCache() async {
