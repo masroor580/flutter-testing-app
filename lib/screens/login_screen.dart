@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import '../auth_services/auth_provider.dart';
+import 'package:new_app/auth_services/local_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,6 +17,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  final LocalAuthentication auth = LocalAuthentication();
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -21,10 +31,10 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+
+  /// Validates email or phone number input
   String? _validateEmailOrPhone(String? value) {
-    if (value == null || value
-        .trim()
-        .isEmpty) {
+    if (value == null || value.trim().isEmpty) {
       return "Please enter email or phone number";
     }
     bool isValidEmail = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
@@ -35,10 +45,9 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
+  /// Validates password input
   String? _validatePassword(String? value) {
-    if (value == null || value
-        .trim()
-        .isEmpty) {
+    if (value == null || value.trim().isEmpty) {
       return "Password is required";
     }
     if (value.length < 6) {
@@ -47,36 +56,41 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
+  /// Handles login with email/phone and password
+  /// ✅ **Handles manual login**
   Future<void> _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    // 🔥 Start loading immediately
     authProvider.setLoading(true);
 
     if (!_formKey.currentState!.validate()) {
-      authProvider.setLoading(false); // ❌ Stop loading if validation fails
+      authProvider.setLoading(false);
       return;
     }
 
     String emailOrPhone = _emailController.text.trim();
     String password = _passwordController.text.trim();
-
     String? result = await authProvider.login(emailOrPhone, password);
 
-    authProvider.setLoading(false); // ✅ Stop loading after login attempt
+    authProvider.setLoading(false);
 
     if (!mounted) return;
 
     if (result == null) {
+      final box = Hive.box('authBox');
+      bool isBiometricEnabled = box.get('biometric_enabled') ?? false;
+
+      if (isBiometricEnabled) { // ✅ Save credentials only if biometrics is enabled
+        authProvider.saveCredentials(emailOrPhone, password);
+      }
+
       Navigator.pushReplacementNamed(context, '/home');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
     }
   }
 
 
+  /// Handles Google sign-in
   Future<void> _handleGoogleSignIn() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.signInWithGoogle();
@@ -94,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context, authProvider, child) {
         return Stack(
           children: [
-            _buildLoginUI(), // Make sure UI rebuilds
+            _buildLoginUI(),
             if (authProvider.isLoading)
               Container(
                 color: Colors.black.withOpacity(0.5),
@@ -164,13 +178,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 40, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text("Login",
-                    style: TextStyle(fontSize: 16, color: Colors.white)),
+                child: const Text("Login", style: TextStyle(fontSize: 16, color: Colors.white)),
+              ),
+
+              const SizedBox(height: 15),
+
+              /// Biometric Authentication Button
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  await authProvider.loginWithBiometrics(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.fingerprint, color: Colors.white),
+                label: const Text("Login with Fingerprint", style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
 
               const SizedBox(height: 15),
@@ -180,14 +208,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _handleGoogleSignIn,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 40, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 icon: const Icon(Icons.login, color: Colors.white),
-                label: const Text("Sign in with Google",
-                    style: TextStyle(fontSize: 16, color: Colors.white)),
+                label: const Text("Sign in with Google", style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
               const SizedBox(height: 15),
 
@@ -196,8 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.pushReplacementNamed(context, '/signup');
                 },
-                child: const Text("Don't have an account? Sign Up",
-                    style: TextStyle(fontSize: 14, color: Colors.blue)),
+                child: const Text("Don't have an account? Sign Up", style: TextStyle(fontSize: 14, color: Colors.blue)),
               ),
             ],
           ),
@@ -217,14 +241,12 @@ class _LoginScreenState extends State<LoginScreen> {
           validator: _validatePassword,
           obscureText: isObscured,
           onToggleObscure: () {
-            Provider
-                .of<AuthProvider>(context, listen: false)
-                .togglePasswordVisibility();
+            Provider.of<AuthProvider>(context, listen: false).togglePasswordVisibility();
           },
         );
       },
     );
-  } // ❌ Removed the extra closing bracket here
+  }
 }
 
 
