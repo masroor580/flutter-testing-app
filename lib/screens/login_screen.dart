@@ -278,9 +278,15 @@ class CustomTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        prefixIcon: Icon(
+          isPassword ? Icons.lock : Icons.person, // 🔥 Icon for Password & Email/Phone
+          color: Colors.blue,
+        ),
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon((obscureText ?? true) ? Icons.visibility : Icons.visibility_off),
+          icon: Icon(
+            (obscureText ?? true) ? Icons.visibility : Icons.visibility_off,
+          ),
           onPressed: onToggleObscure,
         )
             : null,

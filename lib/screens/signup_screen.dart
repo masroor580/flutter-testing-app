@@ -13,16 +13,11 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Use late final to ensure controllers are initialized only once.
   late final TextEditingController _fullNameController = TextEditingController();
   late final TextEditingController _emailController = TextEditingController();
   late final TextEditingController _phoneController = TextEditingController();
   late final TextEditingController _passwordController = TextEditingController();
   late final TextEditingController _confirmPasswordController = TextEditingController();
-
-  // Password visibility states
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -36,7 +31,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('Signup Screen build');
+    final authProvider = context.watch<AuthProvider>(); // Access provider
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: Center(
@@ -66,23 +62,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
-                    _buildTextField("Full Name", _fullNameController, false,
-                        validator: _validateFullName),
+
+                    _buildTextField("Full Name", _fullNameController, Icons.person, false, validator: _validateFullName),
                     const SizedBox(height: 10),
-                    _buildTextField("Email", _emailController, false,
-                        validator: _validateEmail),
+                    _buildTextField("Email", _emailController, Icons.email, false, validator: _validateEmail),
                     const SizedBox(height: 10),
-                    _buildTextField("Phone", _phoneController, false,
-                        validator: _validatePhone),
+                    _buildTextField("Phone", _phoneController, Icons.phone, false, validator: _validatePhone),
                     const SizedBox(height: 10),
-                    _buildTextField("Password", _passwordController, true,
-                        isConfirm: false, validator: _validatePassword),
+                    _buildPasswordField("Password", _passwordController, Icons.lock, isConfirm: false),
                     const SizedBox(height: 10),
-                    _buildTextField("Confirm Password", _confirmPasswordController, true,
-                        isConfirm: true, validator: _validateConfirmPassword),
+                    _buildPasswordField("Confirm Password", _confirmPasswordController, Icons.lock_outline, isConfirm: true),
+
                     const SizedBox(height: 20),
 
-                    // Use context.watch<AuthProvider>() only inside the button
                     Consumer<AuthProvider>(
                       builder: (context, authProvider, child) {
                         return authProvider.isLoading
@@ -91,8 +83,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           onPressed: _handleSignUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 14),
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -117,9 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               MaterialPageRoute(builder: (context) => const LoginScreen()),
                             );
                           },
-                          child: const Text("Login",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, color: Colors.blue)),
+                          child: const Text("Login", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                         ),
                       ],
                     ),
@@ -133,48 +122,54 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  /// Optimized password visibility toggle to prevent unnecessary rebuilds.
-  Widget _buildTextField(
-      String label, TextEditingController controller, bool isPassword,
-      {bool isConfirm = false, String? Function(String?)? validator}) {
+  Widget _buildTextField(String label, TextEditingController controller, IconData icon, bool isPassword, {String? Function(String?)? validator}) {
     return TextFormField(
       controller: controller,
-      obscureText: isPassword
-          ? (isConfirm ? _obscureConfirmPassword : _obscurePassword)
-          : false,
+      obscureText: isPassword,
       decoration: InputDecoration(
         labelText: label,
+        prefixIcon: Icon(icon, color: Colors.blue),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        suffixIcon: isPassword
-            ? StatefulBuilder(
-          builder: (context, setState) {
-            return IconButton(
-              icon: Icon(
-                isConfirm
-                    ? (_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off)
-                    : (_obscurePassword ? Icons.visibility : Icons.visibility_off),
-              ),
-              onPressed: () {
-                setState(() {
-                  if (isConfirm) {
-                    _obscureConfirmPassword = !_obscureConfirmPassword;
-                  } else {
-                    _obscurePassword = !_obscurePassword;
-                  }
-                });
-              },
-            );
-          },
-        )
-            : null,
       ),
       validator: validator,
     );
   }
 
-    /// Full Name Validation
+  Widget _buildPasswordField(String label, TextEditingController controller, IconData icon, {required bool isConfirm}) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        bool isObscured = isConfirm ? authProvider.isConfirmPasswordObscured : authProvider.isPasswordObscured;
+
+        return TextFormField(
+          controller: controller,
+          obscureText: isObscured,
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: Icon(icon, color: Colors.blue),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(isObscured ? Icons.visibility : Icons.visibility_off),
+              onPressed: () {
+                if (isConfirm) {
+                  authProvider.toggleConfirmPasswordVisibility();
+                } else {
+                  authProvider.togglePasswordVisibility();
+                }
+              },
+            ),
+          ),
+          validator: isConfirm ? _validateConfirmPassword : _validatePassword,
+        );
+      },
+    );
+  }
+
+
+  /// Full Name Validation
   String? _validateFullName(String? value) {
     if (value == null || value.trim().isEmpty) return "Full Name is required";
     if (!RegExp(r"^[a-zA-Z\s]{2,}$").hasMatch(value)) {
@@ -215,7 +210,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.trim().isEmpty) return "Confirm Password is required";
     if (value != _passwordController.text) {
-      return "Password do not match";
+      return "Passwords do not match";
     }
     return null;
   }
@@ -225,8 +220,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     final authProvider = context.read<AuthProvider>();
 
-    print("🔄 Checking for existing users before signing up...");
-
     String? result = await authProvider.signUp(
       _fullNameController.text.trim(),
       _emailController.text.trim(),
@@ -235,54 +228,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
 
     if (result == null) {
-      print("✅ Signup successful. Showing alert dialog.");
       if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Column(
-              children: const [
-                Icon(Icons.check_circle, size: 60, color: Colors.green),
-                SizedBox(height: 10),
-                Text(
-                  "Signup Successful!",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "Your account has been created successfully.\nPlease log in to continue.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.black87),
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      );
-                    },
-                    child: const Text("Go to Login"),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
       }
     } else {
-      print("❌ Signup failed: $result");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result), backgroundColor: Colors.redAccent),
       );
