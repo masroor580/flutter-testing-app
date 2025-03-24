@@ -74,6 +74,23 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<String?> biometricLogin() async {
+    try {
+      // 🔥 Fetch the last logged-in user (you might need to store this in Hive or SharedPreferences)
+      String? savedEmail = await getSavedUserEmail(); // Implement this function
+      String? savedPassword = await getSavedUserPassword(); // Implement this function
+
+      if (savedEmail == null || savedPassword == null) {
+        return "No saved login credentials found.";
+      }
+
+      // 🔥 Attempt to log in using stored credentials
+      return await login(savedEmail, savedPassword);
+    } catch (e) {
+      return "Biometric login failed.";
+    }
+  }
+
   Future<void> signInWithGoogle() async {
     setLoading(true);
     try {
@@ -148,6 +165,23 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> saveUserCredentials(String email, String password) async {
+    final box = await Hive.openBox('authBox');
+    await box.put('savedEmail', email);
+    await box.put('savedPassword', password);
+  }
+
+  Future<String?> getSavedUserEmail() async {
+    final box = await Hive.openBox('authBox');
+    return box.get('savedEmail');
+  }
+
+  Future<String?> getSavedUserPassword() async {
+    final box = await Hive.openBox('authBox');
+    return box.get('savedPassword');
+  }
+
+
   Future<String?> login(String identifier, String password) async {
     setLoading(true);
     try {
@@ -164,6 +198,8 @@ class AuthProvider with ChangeNotifier {
         authBox.put('userId', _user!.uid);
         await _fetchUserData(_user!.uid);
       }
+
+      await saveUserCredentials(email, password);
       return null;
     } catch (e) {
       return "Invalid credentials";
