@@ -51,15 +51,27 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 30),
                   ElevatedButton.icon(
                     onPressed: () async {
-                      await context.read<AuthProvider>().logout();
+                      final authProvider = context.read<AuthProvider>();
+
+                      /// ✅ Hide UI first to prevent flickering
+                      authProvider.setLoading(true);
+
+                      await authProvider.logout();
+
+                      /// ✅ Navigate to login BEFORE state updates
                       if (context.mounted) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginScreen()),
-                              (route) => false,
-                        );
+                        Future.microtask(() {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                (route) => false,
+                          );
+                        });
                       }
+                      /// ✅ Set loading false AFTER navigation
+                      authProvider.setLoading(false);
                     },
+
                     icon: const Icon(Icons.logout, color: Colors.white),
                     label: const Text("Logout", style: TextStyle(fontSize: 18, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -273,3 +285,4 @@ class ProfileItem extends StatelessWidget {
     );
   }
 }
+
