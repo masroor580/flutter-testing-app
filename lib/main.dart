@@ -24,6 +24,7 @@ Future<void> _initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Hive.initFlutter();
+  await Hive.openBox('permissions'); // ✅ Open Hive box for permissions
 
   try {
     await Hive.openBox('authBox'); // ✅ Open Hive box for user data
