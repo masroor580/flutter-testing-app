@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:new_app/screens/orders_screen.dart';
-import 'package:new_app/screens/permission_screen.dart';
 import 'package:new_app/screens/profile_screen.dart';
+import 'package:new_app/screens/setting_screen.dart';
 import 'payment_screen.dart';
 
 class MainHome extends StatefulWidget {
@@ -13,26 +15,109 @@ class MainHome extends StatefulWidget {
 
 class _MainHomeState extends State<MainHome> {
   int _currentIndex = 0;
-
-  /// ✅ Lazily load pages only when needed using `PageController`
   late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _currentIndex);
+    _checkAndRequestPermissions();
   }
 
-  /// ✅ Ensure resources are cleaned up when widget is removed
   @override
   void dispose() {
-    _pageController.dispose(); // Prevent memory leaks
+    _pageController.dispose();
     super.dispose();
   }
 
-  /// ✅ App Bar with dynamic title
+  Future<void> _checkAndRequestPermissions() async {
+    var box = await Hive.openBox('permissions');
+
+    List<Permission> permissions = [
+      Permission.camera,
+      Permission.storage,
+      Permission.locationWhenInUse,
+      Permission.contacts,
+      Permission.microphone,
+      Permission.phone,
+    ];
+
+    List<Permission> toRequest = [];
+    List<Permission> permanentlyDenied = [];
+
+    for (Permission permission in permissions) {
+      PermissionStatus status = await permission.status;
+      bool isGranted = box.get(permission.toString(), defaultValue: false);
+
+      if (status.isGranted) {
+        await box.put(permission.toString(), true);
+      } else if (status.isPermanentlyDenied) {
+        permanentlyDenied.add(permission);
+      } else {
+        toRequest.add(permission);
+      }
+    }
+
+    if (toRequest.isNotEmpty) {
+      Map<Permission, PermissionStatus> statuses = await toRequest.request();
+
+      for (var entry in statuses.entries) {
+        if (entry.value.isGranted) {
+          await box.put(entry.key.toString(), true);
+        } else if (entry.value.isPermanentlyDenied) {
+          permanentlyDenied.add(entry.key);
+        }
+      }
+    }
+
+    if (permanentlyDenied.isNotEmpty) {
+      _showPermissionDialog();
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Permission Required"),
+        content: const Text(
+          "Some permissions were permanently denied. Please enable them in settings.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await openAppSettings();
+            },
+            child: const Text("Open Settings"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// **Handles smooth transitions between pages**
+  void _onTabTapped(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300), // Smooth transition
+      curve: Curves.easeInOut, // Animation effect
+    );
+
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   PreferredSizeWidget _buildAppBar() {
-    const titles = ["Profile", "Food Orders", "Payment", "Permissions"];
+    const titles = ["Profile", "Food Orders", "Payment", "Settings"];
     return AppBar(
       title: Text(titles[_currentIndex]),
       centerTitle: true,
@@ -44,10 +129,9 @@ class _MainHomeState extends State<MainHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-
-      /// ✅ Use `PageView` instead of `IndexedStack` to avoid keeping all screens in memory
       body: PageView(
         controller: _pageController,
+        physics: const BouncingScrollPhysics(), // ✅ Smooth sliding effect
         onPageChanged: (index) {
           setState(() {
             _currentIndex = index;
@@ -57,72 +141,49 @@ class _MainHomeState extends State<MainHome> {
           ProfileScreen(),
           OrdersPage(),
           PaymentScreen(),
-          PermissionsScreen(),
+          settingScreen(),
         ],
       ),
-
-      /// ✅ Bottom Navigation Bar (Optimized)
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          _pageController.jumpToPage(index);
-        },
+        onTap: _onTabTapped, // ✅ Calls animateToPage
       ),
     );
   }
 }
 
-/// ✅ Optimized Bottom Navigation Bar (Minimizes Rebuilds)
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
   const CustomBottomNavigationBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     const icons = [
-      Icons.home,
+      Icons.person,
       Icons.fastfood,
       Icons.payment,
-      Icons.security,
+      Icons.settings,
     ];
-    const labels = ["Profile", "Orders", "Payment", "Permissions"];
+    const labels = ["Profile", "Orders", "Payment", "Settings"];
 
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(4, (index) {
-          final isSelected = index == currentIndex;
-          return InkWell(
-            onTap: () => onTap(index),
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icons[index], color: isSelected ? Colors.blueAccent : Colors.grey),
-                  const SizedBox(height: 4),
-                  Text(
-                    labels[index],
-                    style: TextStyle(
-                      color: isSelected ? Colors.blueAccent : Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ),
+    return BottomNavigationBar(
+      currentIndex: currentIndex,
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: Colors.blueAccent,
+      unselectedItemColor: Colors.grey,
+      onTap: onTap, // ✅ Calls _onTabTapped for smooth animation
+      items: List.generate(4, (index) {
+        return BottomNavigationBarItem(
+          icon: Icon(icons[index]),
+          label: labels[index],
+        );
+      }),
     );
   }
 }
-
