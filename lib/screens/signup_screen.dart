@@ -51,15 +51,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   shrinkWrap: true,
                   children: [
                     const Text(
-                      "Create Account",
+                      "Create an Account",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
                     ),
                     const SizedBox(height: 10),
                     const Text(
                       "Sign up to continue",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: TextStyle(fontSize: 18, color: Colors.blue, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 20),
 
