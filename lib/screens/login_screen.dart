@@ -17,18 +17,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final LocalAuthentication auth = LocalAuthentication();
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  /// Handles login process
+    /// Handles login process
   Future<void> _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -97,13 +92,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Displays error messages
   void _showSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -126,10 +121,12 @@ class _LoginScreenState extends State<LoginScreen> {
         return Stack(
           children: [
             Card(
-              elevation: 5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(24.0),
                 child: Form(
                   key: _formKey,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -137,11 +134,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        "Welcome Back!",
+                        "Welcome Back! 👋",
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueAccent,
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 20),
 
                       /// Email / Phone Field
                       CustomTextField(
@@ -150,60 +151,55 @@ class _LoginScreenState extends State<LoginScreen> {
                         isPassword: false,
                         validator: _validateEmailOrPhone,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
 
                       /// Password Field
                       _buildPasswordField(),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
-                      /// Login Button
-                      ElevatedButton(
-                        onPressed: authProvider.isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      /// Login Button (Remains Visible but Disabled When Loading)
+
+                         _buildButton(
+                          onPressed: authProvider.isLoading ? null : _handleLogin,
+                          icon: Icons.login,
+                          label: "Login",
                         ),
-                        child: const Text("Login", style: TextStyle(fontSize: 16, color: Colors.white)),
-                      ),
+                      const SizedBox(height: 12),
 
-                      const SizedBox(height: 10),
-
-                      /// 🔥 Fingerprint Login Button
-                      ElevatedButton.icon(
-                        onPressed: authProvider.isLoading ? null : _handleFingerprintLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      /// Fingerprint Login Button
+                       _buildButton(
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : _handleFingerprintLogin,
+                          icon: Icons.fingerprint,
+                          label: "Login with Fingerprint",
                         ),
-                        icon: const Icon(Icons.fingerprint, color: Colors.white),
-                        label: const Text("Login with Fingerprint", style: TextStyle(fontSize: 16, color: Colors.white)),
-                      ),
 
                       const SizedBox(height: 10),
 
                       /// Google Sign-In Button
-                      ElevatedButton.icon(
-                        onPressed: authProvider.isLoading ? null : _handleGoogleSignIn,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                       _buildButton(
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : _handleGoogleSignIn,
+                          icon: Icons.login,
+                          label: "Sign in with Google",
                         ),
-                        icon: const Icon(Icons.login, color: Colors.white),
-                        label: const Text("Sign in with Google", style: TextStyle(fontSize: 16, color: Colors.white)),
-                      ),
-                      const SizedBox(height: 15),
+
+                      const SizedBox(height: 12),
 
                       /// Sign-Up Navigation
                       TextButton(
-                        onPressed: () {
-                          if (!authProvider.isLoading) {
-                            Navigator.pushReplacementNamed(context, '/signup');
-                          }
+                        onPressed: authProvider.isLoading
+                            ? null
+                            : () {
+                          Navigator.pushReplacementNamed(
+                              context, '/signup');
                         },
-                        child: const Text("Don't have an account? Sign Up", style: TextStyle(fontSize: 14, color: Colors.blue)),
+                        child: const Text(
+                          "Don't have an account? Sign Up",
+                          style: TextStyle(fontSize: 14, color: Colors.blue),
+                        ),
                       ),
                     ],
                   ),
@@ -211,11 +207,14 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            /// Loading Overlay
+            /// **Single Loading Overlay (White Background)**
             if (authProvider.isLoading)
               Positioned.fill(
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.black),
+                child: Container(
+                  color: Colors.white.withOpacity(0.7), // White transparent overlay
+                  child: const Center(
+                    child: CircularProgressIndicator(color: Colors.blueAccent),
+                  ),
                 ),
               ),
           ],
@@ -223,6 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
   }
+
 
   Widget _buildPasswordField() {
     return Selector<AuthProvider, bool>(
@@ -235,14 +235,39 @@ class _LoginScreenState extends State<LoginScreen> {
           validator: _validatePassword,
           obscureText: isObscured,
           onToggleObscure: () {
-            Provider.of<AuthProvider>(context, listen: false).togglePasswordVisibility();
+            Provider.of<AuthProvider>(context, listen: false)
+                .togglePasswordVisibility();
           },
         );
       },
     );
   }
 
-  /// Email or Phone Validation
+  Widget _buildButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 5,
+          shadowColor: Colors.blueAccent.withOpacity(0.5),
+        ),
+        icon: Icon(icon, color: Colors.white),
+        label: Text(label,
+            style: const TextStyle(fontSize: 16, color: Colors.white)),
+      ),
+    );
+  }
+
+    /// Email or Phone Validation
   String? _validateEmailOrPhone(String? value) {
     if (value == null || value.trim().isEmpty) {
       return "Please enter email or phone number";
@@ -267,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-  /// ✅ **Reusable Custom TextField**
+/// ✅ **Reusable Custom TextField**
 class CustomTextField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
@@ -296,16 +321,19 @@ class CustomTextField extends StatelessWidget {
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         prefixIcon: Icon(
-          isPassword ? Icons.lock : Icons.person, // 🔥 Icon for Password & Email/Phone
+          isPassword ? Icons.lock : Icons.person,
+          // 🔥 Icon for Password & Email/Phone
           color: Colors.blue,
         ),
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(
-            (obscureText ?? true) ? Icons.visibility : Icons.visibility_off,
-          ),
-          onPressed: onToggleObscure,
-        )
+                icon: Icon(
+                  (obscureText ?? true)
+                      ? Icons.visibility
+                      : Icons.visibility_off,
+                ),
+                onPressed: onToggleObscure,
+              )
             : null,
       ),
     );

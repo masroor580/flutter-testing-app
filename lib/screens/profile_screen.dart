@@ -4,8 +4,15 @@ import '../auth_services/auth_provider.dart';
 import 'login_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  _ProfileScreenState createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool isLoggingOut = false;
 
   @override
   Widget build(BuildContext context) {
@@ -14,19 +21,17 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20.0),
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
-            final user = authProvider.user;
-            final currentUser = authProvider.currentUser; // ✅ Fetch stored user data
-            final phoneNumber = currentUser?['phone'] ?? "Not Available"; // ✅ Fix phone number issue
-            final fullName = currentUser?['fullName'] ?? "No Name Available"; // ✅ Fix full name issue
-
-            final displayedPhone = (phoneNumber == null || phoneNumber.isEmpty)
-                ? "Phone number can't be displayed here" // ✅ Show message if phone is missing
-                : phoneNumber;
-
-            if (authProvider.isLoading) {
+            if (isLoggingOut || authProvider.isLoading) {
               return _buildShimmerProfile();
             }
 
+            final user = authProvider.user;
+            final currentUser = authProvider.currentUser;
+            final phoneNumber = currentUser?['phone'] ?? "Not Available";
+            final fullName = currentUser?['fullName'] ?? "No Name Available";
+            final displayedPhone = (phoneNumber.isEmpty)
+                ? "Phone number can't be displayed here"
+                : phoneNumber;
 
             if (user == null) {
               return const Center(
@@ -41,37 +46,27 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   _buildProfilePicture(user.photoURL),
                   const SizedBox(height: 10),
-                  Text(fullName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), // ✅ Full Name
+                  Text(fullName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   Text(user.email ?? "user@example.com", style: const TextStyle(fontSize: 16, color: Colors.grey)),
                   const SizedBox(height: 20),
 
-                  ProfileItem(icon: Icons.phone, title: "Phone", value: displayedPhone), // ✅ Fix phone number issue
+                  ProfileItem(icon: Icons.phone, title: "Phone", value: displayedPhone),
                   ProfileItem(icon: Icons.email, title: "Email", value: user.email),
 
                   const SizedBox(height: 30),
                   ElevatedButton.icon(
                     onPressed: () async {
-                      final authProvider = context.read<AuthProvider>();
+                      setState(() => isLoggingOut = true); // Prevent UI flickering
+                      await context.read<AuthProvider>().logout();
 
-                      /// ✅ Hide UI first to prevent flickering
-                      authProvider.setLoading(true);
-
-                      await authProvider.logout();
-
-                      /// ✅ Navigate to login BEFORE state updates
-                      if (context.mounted) {
-                        Future.microtask(() {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
-                                (route) => false,
-                          );
-                        });
+                      if (mounted) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              (route) => false,
+                        );
                       }
-                      /// ✅ Set loading false AFTER navigation
-                      authProvider.setLoading(false);
                     },
-
                     icon: const Icon(Icons.logout, color: Colors.white),
                     label: const Text("Logout", style: TextStyle(fontSize: 18, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -90,6 +85,8 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+
 
   Widget _buildProfilePicture(String? photoUrl) {
     return CircleAvatar(
